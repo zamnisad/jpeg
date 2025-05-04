@@ -1,0 +1,14 @@
+# useless files
+.idea
+.venv
+.git
+
+# pycache
+Preprocess/__pycache__
+Coder/__pycache__
+Main/__pycache__
+
+# test files
+TEST
+SAVE.jpeg
+out.txt
