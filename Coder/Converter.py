@@ -55,9 +55,9 @@ class Converter:
         ycbcr_img = Image.fromarray(ycbcr, 'RGB')
         if out_path:
             import os
-            new_out = out_path[:out_path.index('.')]  + '.jpeg'
+            new_out = out_path[:out_path.index('.')] + '.jpeg'
             ycbcr_img.save(new_out)
-            os.rename(new_out, out_path)
+            os.replace(new_out, out_path)
 
         if return_type.lower() == 'image':
             return ycbcr_img
@@ -106,9 +106,9 @@ class Converter:
         rgb_img = Image.fromarray(rgb, 'RGB')
         if out_path:
             import os
-            new_out = out_path[:out_path.index('.')]  + '.jpeg'
+            new_out = out_path[:out_path.index('.')] + '.jpeg'
             rgb_img.save(new_out)
-            os.rename(new_out, out_path)
+            os.replace(new_out, out_path)
 
         if return_type.lower() == 'image':
             return rgb_img

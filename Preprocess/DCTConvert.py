@@ -102,7 +102,6 @@ class DCTConvert:
         if not isinstance(img, list):
             img = self.pre.split_by_blocks(img, block_size=block_size)
         channels = [] if True else tuple()
-        print(img[0].shape)
         for channel in img:
             channel = channel.astype(np.float64)
             num1, num2, _, _ = channel.shape

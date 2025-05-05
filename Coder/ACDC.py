@@ -13,7 +13,6 @@ class ACDC:
         CAT_FORM (str): Формат упаковки категорий DC коэффициентов (>BI - big-endian, unsigned char + unsigned int)
         SEQ_LEN_FORM (str): Формат длины закодированной последовательности (>I - big-endian unsigned int)
         RLE_CAT_FORM (str): Формат RLE пар для AC коэффициентов (>IBI - big-endian, unsigned int + unsigned char + unsigned int)
-        INFO_FORM (str): Формат метаданных изображения (>HHB - big-endian, 3 unsigned short)
 
     Методы:
         encode_dc: Кодирует DC коэффициенты
@@ -30,7 +29,6 @@ class ACDC:
         self.CAT_FORM = '>BI'
         self.SEQ_LEN_FORM = '>I'
         self.RLE_CAT_FORM = '>IBI'
-        self.INFO_FORM = '>HHB'
         
     def close_file(self):
         self.file.close()
@@ -332,6 +330,30 @@ class ACDC:
 
         return np.array(decoded)
 
+    @staticmethod
+    def restore_to_shape(decoded_data: np.ndarray, h, w, block_size=8):
+        """
+        Восстанавливает данные из одномерного массива в нужную форму
+        (например, из (9844, 64) в (107, 92, 64)).
+        
+        Args:
+            decoded_data: Декодированные данные.
+            h: Высота исходного изображения.
+            w: Ширина исходного изображения.
+            block_size: Размер блока (8x8).
+            
+        Returns:
+            Восстановленные данные.
+        """
+        # Для Y канала
+        num_blocks_h = np.ceil(h / block_size).astype(int)
+        num_blocks_w = np.ceil(w / block_size).astype(int)
+
+        # Преобразуем одномерный массив в нужную форму
+        restored_data = decoded_data.reshape((num_blocks_h, num_blocks_w, block_size**2))
+
+        return restored_data
+
     def reprocess(self):
         """
         Восстанавливает изображение из закодированного файла.
@@ -341,28 +363,39 @@ class ACDC:
                 Кортеж из трёх каналов (Y, Cb, Cr) в виде 2D массивов
         """
         with open(self.fn, 'rb') as file:
-            h, w, block_size = struct.unpack(self.INFO_FORM, file.read(struct.calcsize(self.INFO_FORM)))
+            h, w, block_size, quality = struct.unpack('>HHBB', file.read(struct.calcsize('>HHBB')))
 
-            yb_cnt = int(np.ceil(h / block_size) * np.ceil(h / block_size))
-            cbcrb_cnt = int(np.ceil(h // 2 / block_size) * np.ceil(h // 2 / block_size))
-            
-            dc_y = np.array(ACDC.decode(self, file, 'DC', yb_cnt, block_size))  # Передаем все параметры
+            yb_cnt = int(np.ceil(h / block_size) * np.ceil(w / block_size))
+            subh = np.ceil(h / 2)
+            subw = np.ceil(w / 2)
+
+            # число блоков Cb и Cr
+            cbcrb_cnt = int(np.ceil(subh / block_size) * np.ceil(subw / block_size))
+
+            dc_y = np.array(ACDC.decode(self, file, 'DC', yb_cnt, block_size))  
             dc_y.resize(yb_cnt, 1)
-            ac_y = np.array(ACDC.decode(self, file, 'AC', yb_cnt, block_size))  # Передаем все параметры
+            ac_y = np.array(ACDC.decode(self, file, 'AC', yb_cnt, block_size))  
             ac_y.resize(yb_cnt, block_size**2 - 1)
-            
-            dc_cb = np.array(ACDC.decode(self, file, 'DC', cbcrb_cnt, block_size))  # Передаем все параметры
+
+            dc_cb = np.array(ACDC.decode(self, file, 'DC', cbcrb_cnt, block_size))  
             dc_cb.resize(cbcrb_cnt, 1)
-            ac_cb = np.array(ACDC.decode(self, file, 'AC', cbcrb_cnt, block_size))  # Передаем все параметры
+            ac_cb = np.array(ACDC.decode(self, file, 'AC', cbcrb_cnt, block_size))  
             ac_cb.resize(cbcrb_cnt, block_size**2 - 1)
-            
-            dc_cr = np.array(ACDC.decode(self, file, 'DC', cbcrb_cnt, block_size))  # Передаем все параметры
+
+            dc_cr = np.array(ACDC.decode(self, file, 'DC', cbcrb_cnt, block_size))  
             dc_cr.resize(cbcrb_cnt, 1)
-            ac_cr = np.array(ACDC.decode(self, file, 'AC', cbcrb_cnt, block_size))  # Передаем все параметры
+            ac_cr = np.array(ACDC.decode(self, file, 'AC', cbcrb_cnt, block_size))  
             ac_cr.resize(cbcrb_cnt, block_size**2 - 1)
-            
+
             y = self.merge_dc_ac(dc_y, ac_y)
             cb = self.merge_dc_ac(dc_cb, ac_cb)
             cr = self.merge_dc_ac(dc_cr, ac_cr)
             
-            return y, cb, cr
+            y = self.restore_to_shape(y, h, w)
+            
+            y1, y2 = y.shape[0], y.shape[1]
+            
+            cb = self.restore_to_shape(cb, h // 2 + (y1 % 2), w // 2 + (y2 % 2))
+            cr = self.restore_to_shape(cr, h // 2 + (y1 % 2), w // 2 + (y2 % 2))
+            
+            return y, cb, cr, block_size, quality
