@@ -7,9 +7,30 @@ class Converter:
     """
     def __init__(self):
         pass
-
+    
     @staticmethod
-    def RGB2YCbCr(img: Union[Image.Image, str, np.ndarray],
+    def save_raw(img_path: str) -> None:
+        """
+        Сохраняет изображение в формате .raw с тем же именем.
+
+        Args:
+            img_path (str): Путь к исходному изображению.
+        """
+        from os.path import splitext
+        import os
+
+        img = Image.open(img_path).convert('RGB')
+        img_array = np.array(img, dtype=np.uint8)
+
+        # Получаем имя без расширения
+        root, _ = splitext(img_path)
+        raw_path = root + '.raw'
+
+        # Сохраняем байты изображения (в порядке RGB)
+        with open(raw_path, 'wb') as f:
+            f.write(img_array.tobytes())
+
+    def RGB2YCbCr(self, img: Union[Image.Image, str, np.ndarray],
                   split_channels: bool = False,
                   return_type: str = 'array',
                   out_path: str = None) -> Union[Image.Image, np.ndarray,
@@ -33,6 +54,7 @@ class Converter:
             Преобразованное изображение в формате массива, изображения или кортежа каналов.
         """
         if isinstance(img, str):
+            self.save_raw(img)
             img = Image.open(img)
         if isinstance(img, Image.Image):
             if img.mode in ('L', '1'):
