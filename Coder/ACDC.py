@@ -284,49 +284,41 @@ class ACDC:
         """
         assert mode == 'AC' or mode == 'DC'
 
-        decoded = []
-        bits_buffer = ""
-        cur_node = root
-
-        codes = self.Huf.build_code(root)
-
-        for b in data:
-            bits_buffer += bin(b)[2:].rjust(8, '0')
-        if 0 < padding:
+        bits_buffer = ''.join(f'{byte:08b}' for byte in data)
+        if padding > 0:
             bits_buffer = bits_buffer[:-padding]
 
-        while len(bits_buffer) >= 0:
+        decoded = []
+        cur_node = root
+        i = 0
+
+        while i < len(bits_buffer):
+            bit = bits_buffer[i]
+            i += 1
+            cur_node = cur_node.left if bit == '0' else cur_node.right
+
             if cur_node.value is not None:
                 if mode == 'DC':
                     cat = cur_node.value
                     if cat != 0:
-                        dc = self.iconvert(bits_buffer[:cat], cat)
+                        dc = self.iconvert(bits_buffer[i:i+cat], cat)
                         decoded.append(dc)
                     else:
                         decoded.append(0)
+                    i += cat
                 else:
                     run_len, cat = cur_node.value
                     decoded.extend([0] * run_len)
                     if cat != 0:
-                        ac = self.iconvert(bits_buffer[:cat], cat)
+                        ac = self.iconvert(bits_buffer[i:i+cat], cat)
                         decoded.append(ac)
                     else:
                         break
+                    i += cat
                 cur_node = root
-                bits_buffer = bits_buffer[cat:]
-
-            if not bits_buffer:
-                break
-
-            bit = bits_buffer[0]
-            bits_buffer = bits_buffer[1:]
-            if bit == '0':
-                cur_node = cur_node.left
-            else:
-                cur_node = cur_node.right
 
         for i in range(1, len(decoded)):
-            decoded[i] += decoded[i -  1]
+            decoded[i] += decoded[i - 1]
 
         return np.array(decoded)
 
@@ -363,7 +355,8 @@ class ACDC:
                 Кортеж из трёх каналов (Y, Cb, Cr) в виде 2D массивов
         """
         with open(self.fn, 'rb') as file:
-            h, w, block_size, quality = struct.unpack('>HHBB', file.read(struct.calcsize('>HHBB')))
+            h, w, _, quality = struct.unpack('>HHBB', file.read(struct.calcsize('>HHBB')))
+            block_size = 8
 
             yb_cnt = int(np.ceil(h / block_size) * np.ceil(w / block_size))
             subh = np.ceil(h / 2)

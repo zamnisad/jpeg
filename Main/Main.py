@@ -10,15 +10,15 @@ class Main:
         self.dctCLASS = DCTConvert()
         self.q = Quantum()
         self.zigzag = ZigZag()
-        self.dif = ACDC('compressed.zmn')
+        self.dif = ACDC(output)
         
-    def encode(self, img: Union[str, Image.Image, np.ndarray], quality: int=80) -> Union[None, str]:
+    def encode(self, img: Union[str, Image.Image, np.ndarray], quality: int=80, print_info=False) -> Union[None, str]:
         if not (0 < quality <= 100):
             print(f"Error quality: {quality}")
             quit(1488)
-
-        print("Encoding...")
-        st = time.time()
+        if print_info:
+            print("Encoding...")
+            st = time.time()
         
         image = self.cv.RGB2YCbCr(img)
         
@@ -48,18 +48,21 @@ class Main:
         self.dif.process(cb)
         self.dif.process(cr)
         
-        print('Time for encoding: ', round(time.time()-st, 3), ' seconds')
-        print('File saved: ', self.out)
+        if print_info:
+            print('Time for encoding: ', round(time.time()-st, 3), ' seconds')
+            print('File saved: ', self.out)
     
-    def decode(self, img: str='decompressed.zmn') -> Union[Image.Image, np.ndarray, str]:
-        print("Decoding...")
-        st = time.time()
+    def decode(self, img: str='decompressed.zmn', print_info=False) -> Union[Image.Image, np.ndarray, str]:
+        if print_info:
+            print("Decoding...")
+            st = time.time()
+            
         buf_y, buf_cb, buf_cr, bsz, quality = self.dif.reprocess()
 
         y  = self.zigzag.inverse(buf_y)
         cb = self.zigzag.inverse(buf_cb)
         cr = self.zigzag.inverse(buf_cr)
- 
+
         Q_Y = self.q.requant('y', quality=quality)
         Q_C = self.q.requant('c', quality=quality)
 
@@ -83,7 +86,8 @@ class Main:
 
         rgb_image = self.cv.YCbCr2RGB(image, out_path=img)
         
-        print('Time for decoding: ', round(time.time()-st, 3), ' seconds')
-        print('File decompressed: ', img)
+        if print_info:
+            print('Time for decoding: ', round(time.time()-st, 3), ' seconds')
+            print('File decompressed: ', img)
 
         return rgb_image

@@ -35,6 +35,8 @@ class Converter:
         if isinstance(img, str):
             img = Image.open(img)
         if isinstance(img, Image.Image):
+            if img.mode in ('L', '1'):
+                img = img.convert('RGB')
             img = np.array(img).astype(np.float32)
         
         r = img[:, :, 0]
@@ -54,10 +56,16 @@ class Converter:
 
         ycbcr_img = Image.fromarray(ycbcr, 'RGB')
         if out_path:
+            from os.path import splitext
             import os
-            new_out = out_path[:out_path.index('.')] + '.jpeg'
-            ycbcr_img.save(new_out)
-            os.replace(new_out, out_path)
+            root, ext = splitext(out_path)
+            ext = ext.lower()
+            save_ext = ext if ext in ['.png', '.jpg', '.jpeg'] else '.png'
+            temp_path = root + save_ext
+            ycbcr_img.save(temp_path)
+            if temp_path != out_path:
+                os.replace(temp_path, out_path)
+
 
         if return_type.lower() == 'image':
             return ycbcr_img
@@ -105,10 +113,16 @@ class Converter:
         
         rgb_img = Image.fromarray(rgb, 'RGB')
         if out_path:
+            from os.path import splitext
             import os
-            new_out = out_path[:out_path.index('.')] + '.jpeg'
-            rgb_img.save(new_out)
-            os.replace(new_out, out_path)
+            root, ext = splitext(out_path)
+            ext = ext.lower()
+            save_ext = ext if ext in ['.png', '.jpg', '.jpeg'] else '.png'
+            temp_path = root + save_ext
+            rgb_img.save(temp_path)
+            if temp_path != out_path:
+                os.replace(temp_path, out_path)
+
 
         if return_type.lower() == 'image':
             return rgb_img
