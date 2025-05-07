@@ -6,7 +6,9 @@ __pycache__/
 
 # test files
 TEST
-*.zmn
+compressed.zmn
+decompressed.zmn
+Z:\prog\jpeg\.resume\graphs\test.py
 
-# resume dir
-.resume
+# resume imgs
+Z:\prog\jpeg\.resume\graphs\imgs
