@@ -13,7 +13,7 @@ class Main:
         self.dif = ACDC(output)
         
     def encode(self, img: Union[str, Image.Image, np.ndarray], quality: int=80, print_info=False) -> Union[None, str]:
-        if not (0 < quality <= 100):
+        if not (0 <= quality <= 100):
             print(f"Error quality: {quality}")
             quit(1488)
         if print_info:

@@ -50,7 +50,11 @@ class Quantum:
         else:
             Q = self.Q_C
 
-        if quality < 50:
+        epsilon = 1e-2
+
+        if quality == 0:
+            scale = 5000 / epsilon
+        elif quality < 50:
             scale = 5000 / quality
         else:
             scale = 200 - 2 * quality

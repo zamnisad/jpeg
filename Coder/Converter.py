@@ -151,51 +151,55 @@ class Converter:
         
         return rgb
 
-    def show_images(self, img: Union[Image.Image, str, np.ndarray], # добавить np.ndarray
-                    show_split: bool = True) -> None:
+    def show_images(self, img: Union[Image.Image, str, np.ndarray]) -> None:
         """
-        Отображает изображения, связанные с преобразованием между цветовыми пространствами RGB и YCbCr.
+        Отображает изображение RGB и YCbCr, а также каналы R, G, B, Y, Cb, Cr в цвете.
 
         Args:
-            img (Union[Image.Image, str]): Изображение PIL.Image или путь к изображению, которое нужно отобразить.
-            show_split (bool, optional): Если True, отображаются отдельные каналы Y, Cb и Cr. Если False, отображаются только оригинальное изображение RGB, преобразованное в YCbCr и обратно в RGB. По умолчанию True.
+            img (Union[Image.Image, str, np.ndarray]): Изображение PIL.Image, путь или массив.
 
         Returns:
-            None: Функция не возвращает значений, а только отображает изображения с помощью matplotlib.
+            None
         """
-        arr_ycbcr = self.RGB2YCbCr(img)
-        img_ycbcr = Image.fromarray(arr_ycbcr, 'RGB')
+        if isinstance(img, str):
+            img = Image.open(img)
+        if isinstance(img, Image.Image):
+            img = np.array(img)
 
-        arr_rgb = self.YCbCr2Rgb(img_ycbcr)
-        img_rgb = Image.fromarray(arr_rgb, 'RGB')
+        # RGB каналы
+        r = img[:, :, 0]
+        g = img[:, :, 1]
+        b = img[:, :, 2]
+        
+        r_img = np.stack([r, np.zeros_like(r), np.zeros_like(r)], axis=2).astype(np.uint8)
+        g_img = np.stack([np.zeros_like(g), g, np.zeros_like(g)], axis=2).astype(np.uint8)
+        b_img = np.stack([np.zeros_like(b), np.zeros_like(b), b], axis=2).astype(np.uint8)
 
-        if show_split:
-            y_channel, cb_channel, cr_channel = self.RGB2YCbCr(img, split_channels=True)
-            fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+        # YCbCr каналы
+        ycbcr = self.RGB2YCbCr(img)
+        y, cb, cr = ycbcr[:, :, 0], ycbcr[:, :, 1], ycbcr[:, :, 2]
+        y_img = np.stack([y, y, y], axis=2).astype(np.uint8)
+        
+        # для Cb и Cr применим сдвиг + визуализацию в синих/красных оттенках
+        cb_img = np.stack([np.zeros_like(cb), 255 - cb, cb], axis=2).astype(np.uint8)
+        cr_img = np.stack([cr, 255 - cr, np.zeros_like(cr)], axis=2).astype(np.uint8)
 
-            titles = ['Original RGB', 'Combined YCbCr', 'Recovered RGB',
-                      'Y Channel (Luminance)', 'Cb Channel (Blue difference)', 'Cr Channel (Red difference)']
-            images = [img, img_ycbcr, img_rgb, y_channel, cb_channel, cr_channel]
-            cmaps = [None, None, None, 'gray', 'gray', 'gray']
+        fig, axes = plt.subplots(2, 4, figsize=(20, 10))
 
-            for ax, image, title, cmap in zip(axes.flat, images, titles, cmaps):
-                ax.imshow(image, cmap=cmap)
-                ax.set_title(title)
-                ax.axis('off')
+        titles = [
+            'RGB Image', 'R Channel (Red)', 'G Channel (Green)', 'B Channel (Blue)',
+            'YCbCr Image', 'Y Channel (Luma)', 'Cb Channel (Blue diff)', 'Cr Channel (Red diff)'
+        ]
+        images = [
+            img, r_img, g_img, b_img,
+            ycbcr, y_img, cb_img, cr_img
+        ]
 
-            plt.tight_layout()
-            plt.show()
-        else:
-            fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+        for ax, image, title in zip(axes.flat, images, titles):
+            ax.imshow(image)
+            ax.set_title(title)
+            ax.axis('off')
 
-            titles = ['Original RGB', 'Combined YCbCr', 'Recovered RGB']
-            images = [img, img_ycbcr, img_rgb]
-
-            for ax, image, title in zip(axes, images, titles):
-                ax.imshow(image)
-                ax.set_title(title)
-                ax.axis('off')
-
-            plt.tight_layout()
-            plt.show()
+        plt.tight_layout()
+        plt.show()
 
