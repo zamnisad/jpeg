@@ -3,6 +3,7 @@ from PIL import Image
 import os
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from collections import defaultdict
 
 
 def generate_image_versions(input_path):
@@ -151,6 +152,53 @@ def zero2hundred(dir: str):
                 os.remove(e_zmn_path)
                 
 
+def make_multiple_collages(folder: str, out_dir: str, figsize=(12, 8)) -> None:
+    """
+    Строит 2x3 коллажи для каждого набора изображений NAME_Q.png с Q ∈ [0, 20, ..., 100].
+
+    Args:
+        folder (str): Путь к папке, содержащей изображения.
+        out_dir (str): Куда сохранять коллажи.
+        figsize (tuple): Размер коллажа (ширина, высота).
+    """
+    os.makedirs(out_dir, exist_ok=True)
+
+    # Сбор изображений по NAME
+    name_to_files = defaultdict(list)
+    for f in os.listdir(folder):
+        if not f.lower().endswith('.png'):
+            continue
+        if '_' not in f:
+            continue
+        name, q_ext = f.rsplit('_', 1)
+        q = q_ext.split('.')[0]
+        try:
+            q = int(q)
+            name_to_files[name].append((q, os.path.join(folder, f)))
+        except ValueError:
+            continue  # Если Q не число — пропускаем
+
+    for name, items in name_to_files.items():
+        # Сортируем по значению качества
+        items_sorted = sorted(items, key=lambda x: x[0])
+        if len(items_sorted) != 6:
+            print(f"[!] Пропущено {name} — найдено {len(items_sorted)} изображений, ожидалось 6")
+            continue
+
+        fig, axes = plt.subplots(2, 3, figsize=figsize)
+        for ax, (q, path) in zip(axes.flat, items_sorted):
+            img = Image.open(path)
+            ax.imshow(img)
+            ax.set_title(f"{name}, Q={q}", fontsize=10)
+            ax.axis('off')
+
+        plt.tight_layout()
+        out_path = os.path.join(out_dir, f"collage_{name}.png")
+        plt.savefig(out_path)
+        plt.close(fig)
+        print(f"[ok] Сохранён коллаж: {out_path}")
+
+
 
 if __name__ == "__main__":
     test_dir = r"Z:\prog\jpeg\.resume\test_imgs\from0to100"
@@ -162,3 +210,4 @@ if __name__ == "__main__":
     two298(test_dir)
     plot_compression_sizes()
     zero2hundred(test_dir)
+    make_multiple_collages(test_dir, r'Z:\prog\jpeg\.resume\imgs')
